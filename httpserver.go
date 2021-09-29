@@ -61,8 +61,9 @@ func statusHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	//define a client for loggly
+	//define a client for logglyy
 	r := mux.NewRouter()
 	r.HandleFunc("/ntrut/status", statusHandler).Methods("GET")
 	http.ListenAndServe(":8080", r)
+
 }
