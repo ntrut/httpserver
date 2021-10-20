@@ -7,12 +7,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
-	"io"
 	"net/http"
-	"os"
 	"strconv"
-	"time"
-
 	//"github.com/aws/aws-sdk-go/aws"
 	//"github.com/aws/aws-sdk-go/aws/session"
 	//"github.com/aws/aws-sdk-go/service/dynamodb"
@@ -22,9 +18,8 @@ import (
 )
 
 type information struct {
-	Count        int64 `json:"Count"`
-	Items        Item  `json:"Items"`
-	ScannedCount int64 `json:"ScannedCount"`
+	Table       string `json:"table"`
+	RecordCount *int64 `json:"recordCount"`
 }
 
 type Item struct {
@@ -45,51 +40,65 @@ type Item struct {
 
 func statusHandler(w http.ResponseWriter, r *http.Request) {
 
-	//loggly stuff
-	err := os.Setenv("LOGGLY_TOKEN", "f6522fc1-420b-4614-8cfa-013b881bac56")
+	err := godotenv.Load("app.env")
 	if err != nil {
-		return
+		fmt.Println("Error loading the .env file")
 	}
+
+	//define a client for loggly
 	client := loggly.New("nazartrut")
 
+	//see if the path is correct, if not throw a 400 bad request error
+	fmt.Println(r.URL.Path)
+	if r.URL.Path != "/805857442/status" {
+		client.Send("error", "Error, bad request for the endpoint /805857442/status")
+		//send back 400 status code
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode("400 - Bad Request")
+		return
+	}
+
+	// Create an AWS session for US East 1. REE
+	sess := session.Must(session.NewSession(&aws.Config{
+		Region: aws.String("us-east-1"),
+	}))
+
+	// Create a DynamoDB instance
+	db := dynamodb.New(sess)
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
 
-	//json that will be returned in the get request
-	outputJson := `{"status":  0, "system-time": 0}`
-	out := map[string]interface{}{}
-	json.Unmarshal([]byte(outputJson), &out)
+	if r.Method != http.MethodGet {
+		client.Send("error", "Incorrect Method, Needs to be GET. Endpoint: /805857442/status")
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		json.NewEncoder(w).Encode("405 - Method Not Allowed")
+	} else {
+		//query the db
+		params := &dynamodb.ScanInput{
+			TableName: aws.String("Crypto"),
+		}
 
-	out["status"] = http.StatusOK
-	out["system-time"] = time.Now()
+		//scan the db, this returns all items
+		result, err := db.Scan(params)
+		if err != nil {
+			client.Send("error", "Error getting all items from Crpto Table. Endpoint: /805857442/status")
+		} else {
+			data := information{
+				Table:       "Crypto",
+				RecordCount: result.Count,
+			}
 
-	output, err := json.Marshal(out)
-	if err != nil {
-		client.Send("error", "Error marshalling the output Json")
-		w.WriteHeader(http.StatusNoContent)
-		return
+			//marshall map the struct
+			av, err := dynamodbattribute.MarshalMap(data)
+			if err != nil {
+				client.Send("error", "Got error marshalling new data item. Endpoint: /805857442/status")
+			}
+
+			//success
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(data)
+			client.Send("info", "Successfully returned all items from Cryto dynamoDB table. Length of data: "+strconv.Itoa(len(av)))
+		}
 	}
-
-	//json that is send back to loggly
-	logglyJson := `{"status":  0, "method-type": "", "source": "", "request-path": ""}`
-	out2 := map[string]interface{}{}
-	json.Unmarshal([]byte(logglyJson), &out2)
-
-	//set the logglyjson
-	out2["status"] = http.StatusOK
-	out2["method-type"] = "GET"
-	out2["source"] = r.RemoteAddr
-	out2["request-path"] = r.URL.Path
-
-	logglyOutput, err := json.Marshal(out2)
-	if err != nil {
-		client.Send("error", "Error marshalling the loggly output Json")
-		w.WriteHeader(http.StatusNoContent)
-		return
-	}
-
-	client.Send("info", string(logglyOutput))
-	io.WriteString(w, string(output))
 }
 
 func all(w http.ResponseWriter, r *http.Request) {
@@ -104,8 +113,8 @@ func all(w http.ResponseWriter, r *http.Request) {
 
 	//see if the path is correct, if not throw a 400 bad request error
 	fmt.Println(r.URL.Path)
-	if r.URL.Path != "/ntrut/all" {
-		client.Send("error", "Error, bad request for the endpoint /ntrut/all")
+	if r.URL.Path != "/805857442/all" {
+		client.Send("error", "Error, bad request for the endpoint /805857442/all")
 		//send back 400 status code
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode("400 - Bad Request")
@@ -121,7 +130,7 @@ func all(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	if r.Method != http.MethodGet {
-		client.Send("error", "Incorrect Method, Needs to be GET. Endpoint: /ntrut/all")
+		client.Send("error", "Incorrect Method, Needs to be GET. Endpoint: /805857442/all")
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		json.NewEncoder(w).Encode("405 - Method Not Allowed")
 	} else {
@@ -133,13 +142,13 @@ func all(w http.ResponseWriter, r *http.Request) {
 		//scan the db, this returns all items
 		result, err := db.Scan(params)
 		if err != nil {
-			client.Send("error", "Error getting all items from Crpto Table. Endpoint: /ntrut/all")
+			client.Send("error", "Error getting all items from Crpto Table. Endpoint: /805857442/all")
 		} else {
 			//create an array, then unshall the gotten items from the scan
 			var info []Item
 			err = dynamodbattribute.UnmarshalListOfMaps(result.Items, &info)
 			if err != nil {
-				_ = client.Send("error", "Got error unmarshalling items. Endpoint: /ntrut/all")
+				_ = client.Send("error", "Got error unmarshalling items. Endpoint: /805857442/all")
 			}
 
 			//success
@@ -153,8 +162,8 @@ func all(w http.ResponseWriter, r *http.Request) {
 func main() {
 	//define a client for logglyy
 	r := mux.NewRouter()
-	r.HandleFunc("/ntrut/status", statusHandler).Methods("GET")
-	r.HandleFunc("/ntrut/all", all).Methods("GET")
+	r.HandleFunc("/805857442/status", statusHandler).Methods("GET")
+	r.HandleFunc("/805857442/all", all).Methods("GET")
 	http.ListenAndServe(":8080", r)
 
 }
