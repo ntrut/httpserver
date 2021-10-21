@@ -7,14 +7,11 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
-	"net/http"
-	"strconv"
-	//"github.com/aws/aws-sdk-go/aws"
-	//"github.com/aws/aws-sdk-go/aws/session"
-	//"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/gorilla/mux"
 	"github.com/jamespearly/loggly"
 	"github.com/joho/godotenv"
+	"net/http"
+	"strconv"
 )
 
 type information struct {
@@ -40,7 +37,7 @@ type Item struct {
 
 func statusHandler(w http.ResponseWriter, r *http.Request) {
 
-	err := godotenv.Load("app.env")
+	err := godotenv.Load("./app.env")
 	if err != nil {
 		fmt.Println("Error loading the .env file")
 	}
@@ -49,7 +46,6 @@ func statusHandler(w http.ResponseWriter, r *http.Request) {
 	client := loggly.New("nazartrut")
 
 	//see if the path is correct, if not throw a 400 bad request error
-	fmt.Println(r.URL.Path)
 	if r.URL.Path != "/805857442/status" {
 		client.Send("error", "Error, bad request for the endpoint /805857442/status")
 		//send back 400 status code
@@ -81,6 +77,8 @@ func statusHandler(w http.ResponseWriter, r *http.Request) {
 		result, err := db.Scan(params)
 		if err != nil {
 			client.Send("error", "Error getting all items from Crpto Table. Endpoint: /805857442/status")
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode("500 - Internal Server Error")
 		} else {
 			data := information{
 				Table:       "Crypto",
@@ -94,6 +92,7 @@ func statusHandler(w http.ResponseWriter, r *http.Request) {
 			}
 
 			//success
+			fmt.Println(av)
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(data)
 			client.Send("info", "Successfully returned all items from Cryto dynamoDB table. Length of data: "+strconv.Itoa(len(av)))
@@ -103,7 +102,7 @@ func statusHandler(w http.ResponseWriter, r *http.Request) {
 
 func all(w http.ResponseWriter, r *http.Request) {
 
-	err := godotenv.Load("app.env")
+	err := godotenv.Load("./app.env")
 	if err != nil {
 		fmt.Println("Error loading the .env file")
 	}
