@@ -65,18 +65,18 @@ func statusHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		//query the db
 		params := &dynamodb.ScanInput{
-			TableName: aws.String("Crypto"),
+			TableName: aws.String("ntrut-Crypto"),
 		}
 
 		//scan the db, this returns all items
 		result, err := db.Scan(params)
 		if err != nil {
-			client.Send("error", "Error getting all items from Crpto Table. Endpoint: /ntrut/status")
+			client.Send("error", "Error getting all items from ntrut-Crypto Table. Endpoint: /ntrut/status")
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode("500 - Internal Server Error")
 		} else {
 			data := information{
-				Table:       "Crypto",
+				Table:       "ntrut-Crypto",
 				RecordCount: result.Count,
 			}
 
@@ -124,13 +124,13 @@ func all(w http.ResponseWriter, r *http.Request) {
 	} else {
 		//query the db
 		params := &dynamodb.ScanInput{
-			TableName: aws.String("Crypto"),
+			TableName: aws.String("ntrut-Crypto"),
 		}
 
 		//scan the db, this returns all items
 		result, err := db.Scan(params)
 		if err != nil {
-			client.Send("error", "Error getting all items from Crpto Table. Endpoint: /ntrut/all")
+			client.Send("error", "Error getting all items from ntrut-Crypto Table. Endpoint: /ntrut/all")
 		} else {
 			//create an array, then unshall the gotten items from the scan
 			var info []Item
@@ -197,7 +197,7 @@ func search(w http.ResponseWriter, r *http.Request) {
 	} else {
 		//query the db
 		result, err := db.GetItem(&dynamodb.GetItemInput{
-			TableName: aws.String("Crypto"),
+			TableName: aws.String("ntrut-Crypto"),
 			Key: map[string]*dynamodb.AttributeValue{
 				"timestamp": {
 					N: aws.String(key),
