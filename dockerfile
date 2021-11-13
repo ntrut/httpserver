@@ -23,7 +23,6 @@ WORKDIR /
 
 # Copy files from previous build container
 COPY --from=build /app/httpserver ./
-COPY --from=build /app/app.env ./
 
 # Add environment variables
 # ENV ...
