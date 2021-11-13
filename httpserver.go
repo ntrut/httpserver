@@ -9,7 +9,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/gorilla/mux"
 	"github.com/jamespearly/loggly"
-	"github.com/joho/godotenv"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -233,13 +232,7 @@ func search(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	//define a client for logglyy
-	err := godotenv.Load("./app.env")
-	if err != nil {
-		fmt.Println("Error loading the .env file")
-		return
-	}
-
+	
 	r := mux.NewRouter()
 	r.HandleFunc("/ntrut/status", statusHandler).Methods("GET")
 	r.HandleFunc("/ntrut/all", all).Methods("GET")
